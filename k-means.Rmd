@@ -1,0 +1,29 @@
+
+```{r}
+library(nnet)
+library(MASS)
+```
+
+```{r}
+options(OutDec = ",")
+names(iris) <- c("ddk", "sdk", "dp", "sp", "klasa")
+iris$klasa <- factor(rep(c("s","c","v"), rep(50,3)))
+attach(iris)
+
+```
+
+
+```{r}
+irys <- matrix(nrow=150, ncol=2)
+irys[,1] <- iris$sp
+irys[,2] <- iris$dp
+kl <- iris$klasa
+min.sp <- min(sp)
+max.sp <- max(sp)
+min.dp <- min(dp)
+max.dp <- max(dp)
+x <- seq(min.sp,max.sp, length=100)
+y <- seq(min.dp, max.dp, length=100)
+```
+
+

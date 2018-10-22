@@ -1,0 +1,186 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+```{r}
+
+#Sieæ Neuronowa z wartw¹ ukryt¹ - 3 neutrony. Funkcja aktywacji to soft max
+
+library (nnet)
+options(OutDec = ",")
+#zmiana nazw zmiennych
+names(iris) <- c("ddk", "sdk", "dp" , "sp", "klasa")
+# zmiana na jednoliterowe wewn¹trz kolumny klasa
+iris$klasa <- factor(rep(c("s","c","v"),rep(50,3)))
+#Pozwala nam siê dostaæ bezpoœrednio do zmiennych
+attach(iris)
+set.seed(115)
+#zbior danych do rysunku
+min.sp <- min(sp)
+max.sp <- max(sp)
+min.dp <- min(dp)
+max.dp <- max(dp)
+irys <- matrix (nrow=150,ncol=2)
+irys[,1] <- iris$sp
+irys[,2] <- iris$dp
+x <- seq(min.sp, max.sp, length = 100)
+y <- seq(min.dp, max.dp, length = 100)
+kl <- factor (iris$klasa)
+#matryca dla rysunku
+irysT <- expand.grid (sp=x, dp=y) #tworzymy data frame z ka¿dej kombinacji
+n <- length(x)
+#przygotowanie zmiennej zale¿nej wymaganej przez sieæ neuronow¹
+kli <- class.ind(kl)
+#bledy klasyfikacji
+nn.iris <- nnet (irys, kli, skip = TRUE, softmax = TRUE, size = 3, col =2, decay = 0.01, maxit = 1000)
+print(summary(nn.iris))
+#Polecenie summary generuje charakterystykê sieci neuronowej w postaci wartoœci wag dla neuronów w kolejnych warstwach. i wartwa wejsciowa, h ukryta, a o wyjœciowa. b to próg aktywacji 
+y.pred <- predict (nn.iris, irys, type= "class")
+blad <- 1-sum(y.pred == kl)/length(kl)
+print("Blad klasyfikacji dla sieci neuronowej z 3 neuronami w warstwie ukrytej:", quote = FALSE)
+print(blad)
+#rysunek 
+plot(sp, dp, type="n", ylab = "Dlugosc platka", xlab = "Szerokosc platka", xlim=c(min.sp, max.sp), ylim = c (min.dp, max.dp))
+text(sp, dp, as.character(kl))
+y.pred <- predict (nn.iris, irysT)
+z <- y.pred[,1] - pmax(y.pred[,2], y.pred[,3])
+contour(x, y, matrix(z,n), add=TRUE, levels = 0.5, labex = 0, drawlabels = FALSE)
+detach(iris)
+
+
+
+```
+
+```{r}
+
+#funckja SVM wektorów noœnych.
+
+#przyjêto arbitralnie funkcjê j¹drow¹ Gausaa i wartoœci parametrów metody
+
+#By oceniæ model u¿yto metody sprawdzania krzy¿owego
+
+library(class)
+library(e1071)
+data(iris)
+names(iris) <- c("ddk", "sdk", "dp", "sp", "klasa")
+attach(iris)
+options(OutDec = ",")
+svm.iris <- svm(klasa ~ ., data=iris, kernel = "radial", gamma = 0.5, cost = 10, cross = 10)
+print(summary(svm.iris))
+#occena jakoœci klasyfikacji
+y.teoret <- fitted(svm.iris)
+print("Tablica zgodnoœci klasyfikacji:", quote=FALSE)
+print(table(iris$klasa, y.teoret))
+print("Wektory nosne to obserwacje o numerach:", quote=FALSE)
+print(svm.iris$index)
+detach(iris)
+
+#najpierw wyswietla sie raport podsumowujacy, uztykownik jest informowany jak zastosowal funkcje SVM (tryb, parametry).
+
+#Model jednoznacznie wyznaczony przez funkcje jadrowa, w przykladzie zidentyfikowano 46 wektrow nosnych 
+
+# Blad predykcji to okolo 5%
+
+
+
+
+
+```
+
+
+
+```{r}
+#Funkcja fune.svm jako metoda na wybor funkcji jadrowej oraz parametrow
+
+library(MASS)
+library(class)
+library(e1071)
+data(iris)
+names(iris) <- c("ddk", "sdk", "dp", "sp", "klasa")
+attach(iris)
+options(OutDec = ",")
+set.seed(111)
+indeks<- sample(1:nrow(iris), 1)
+print(paste("Ze zbioru uczacego wybrano obserwacje nr: ", indeks), quote = FALSE)
+nowy <- iris[indeks,]
+print(paste("nalezy ona do gatunku: ", nowy$klasa), quote = FALSE)
+iris149 <- iris [-indeks,]
+#najlepszy model SVM z funkcja jadrowa Gaussa 
+svm.iris <- tune.svm(klasa ~ ., data=iris149, kernel = "radial" , gamma = c(0.5,1), cost = 10^(-2:2), tunecontrol = tune.control(sampling = "cross", cross = 3))
+print(summary(svm.iris))
+
+#funkcja signif daje dwie cyfry znaczace:
+print(paste("Najmniejszy blad lasyfikacji dla funkcji Jadrowej Gaussa: ", signif(svm.iris$best.performance, digits = 2)), quote = FALSE )
+print("Parametry tego modelu SVM:", quote = FALSE)
+print(svm.iris$best.parameters)
+#Zapamietujemy najlepszy zbudowany model
+naj.model <- svm.iris$best.model
+min.err <- svm.iris$best.performance
+#najlepszy model z wykorzystaniem wielomianowej funkcji jadrowej 
+
+svm.iris <- tune.svm (klasa ~ ., data=iris149, kernel = "polynomial", degree(2:5), gamma=c(0.5,1), coef0=10, cost=10^(-2:2), tunecontrol=tune.control(sampling="cross", cross =3))
+
+print(paste("Najmniejszy blad lasyfikacji dla wielomianowej funkcji jadrowej: ", signif(svm.iris$best.performance, digits = 2)), quote = FALSE )
+print("Parametry tego modelu SVM:", quote = FALSE)
+print(svm.iris$best.parameters)
+# je¿eli zbudowano model lepszy od najlepszego z wczesniej to go zapamietujemy
+
+if(svm.iris$best.performance < min.err) {
+  
+  najl.model <- svm.iris$best.model;
+  min.err <- svm.iris$best.performance
+}
+
+#najlepszt model z sigmoidalna funckaj jadrowa 
+
+svm.iris <- tune.svm (klasa ~ ., data=iris149, kernel = "sigmoid", gamma=c(0.5,1), coef0=10, cost=10^(-2:2), tunecontrol=tune.control(sampling="cross", cross =3))
+
+print(paste("Najmniejszy blad lasyfikacji dla sigmoidalnej funkcji jadrowej: ", signif(svm.iris$best.performance, digits = 2)), quote = FALSE )
+print("Parametry tego modelu SVM:", quote = FALSE)
+print(svm.iris$best.parameters)
+
+# je¿eli zbudowano model lepszy od najlepszego z wczesniej to go zapamietujemy
+
+if(svm.iris$best.performance < min.err) {
+  
+  najl.model <- svm.iris$best.model;
+  min.err <- svm.iris$best.performance
+}
+
+#najlepszt model z linowa funckaj jadrowa 
+
+svm.iris <- tune.svm (klasa ~ ., data=iris149, kernel = "linear", cost=10^(-2:2), tunecontrol=tune.control(sampling="cross", cross =3))
+
+print(paste("Najmniejszy blad lasyfikacji dla sigmoidalnej funkcji jadrowej: ", signif(svm.iris$best.performance, digits = 2)), quote = FALSE )
+print("Parametry tego modelu SVM:", quote = FALSE)
+print(svm.iris$best.parameters)
+
+# je¿eli zbudowano model lepszy od najlepszego z wczesniej to go zapamietujemy
+
+if(svm.iris$best.performance < min.err) {
+  
+  najl.model <- svm.iris$best.model;
+  min.err <- svm.iris$best.performance
+}
+
+
+#zbadanie przynaleznosci dla klasy wylosowanej wczesniej obserwacji
+
+nowy.bez.klasy <- subset(nowy, select=-klasa)
+#najlepsza kombinacja paramterow i odpowiadajacy jej model
+klasa.nowy <- predict (naj.model, nowy.bez.klasy)
+print(paste("Najlepsz z modeli SVM przydzielil wybrana obserwacje do klasy: ", klasa.nowy) , quote = FALSE)
+      print("Parametry tego modelu SVM:", quote=FALSE)
+      print(summary(najl.model))
+      detach(iris)
+
+      #najlepsza dla tego modelu funkcja wielomianowa z parametrrami 
+      ## d = 2, gamma = 0.5, c=0.01, b³¹d 2,7%. Funkcja sigmoidalna siê kompeltnie nie nadaje, najmniejszy blad 66%
+      # model poprawnie sklasyfikowa³ obserwacje, która nie uczestniczy³a w procesie jego budowy 
+
+```
+
+

@@ -1,0 +1,68 @@
+#Budowa liniowych funkcji dyskryminacyjnych (LDA) dla zbioru iris.
+```{r}
+library(nnet)
+library(MASS)
+```
+
+```{r}
+options(OutDec = ",")
+names(iris) <- c("ddk", "sdk", "dp", "sp", "klasa")
+iris$klasa <- factor(rep(c("s","c","v"), rep(50,3)))
+attach(iris)
+print(iris)
+```
+
+```{r}
+#budowa modelu
+lda.iris <- lda(klasa~sp+dp, data=iris)
+print(lda.iris)
+plot(lda.iris, cex=1.0)
+detach(iris)
+```
+
+
+
+```{r}
+irys <- matrix(nrow=150, ncol=2)
+irys[,1] <- iris$sp
+irys[,2] <- iris$dp
+kl <- iris$klasa
+min.sp <- min(sp)
+max.sp <- max(sp)
+min.dp <- min(dp)
+max.dp <- max(dp)
+x <- seq(min.sp,max.sp, length=100)
+y <- seq(min.dp, max.dp, length=100)
+
+```
+
+```{r}
+irysT <- expand.grid(sp=x, dp=y)
+n <- length(x)
+#budowa modelu
+y.pred <- predict(lda.iris, as.data.frame(irys))
+blad <- 1-sum(y.pred$class==kl)/length(kl)
+print("Błąd klasyfikacyjny dla modelu LDA")
+print(blad)
+```
+
+```{r}
+y.pred <- predict(lda.iris,irysT)
+plot(sp,dp,type = "n", ylab = "Długość płatka",
+     xlab = "szerokość płatka",
+     xlim=c(min.sp,max.sp),
+     ylim=c(min.dp,max.dp))
+text(sp,dp,as.character(kl))
+z<- y.pred$posterior[,1]-pmax(y.pred$posterior[,3],
+                              y.pred$posterior[,2])
+contour(x,y,matrix(z,n), add=TRUE, levels=0.5, labcex=0, drawlabels = FALSE)
+detach(iris)
+
+```
+
+
+
+```{r}
+
+```
+
